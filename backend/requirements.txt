@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pydantic
+kafka-python
+elasticsearch
+psycopg2-binary
