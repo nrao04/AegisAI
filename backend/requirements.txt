@@ -5,4 +5,3 @@ kafka-python
 elasticsearch
 psycopg2-binary
 aiokafka
-psycopg2-binary

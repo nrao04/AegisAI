@@ -12,4 +12,5 @@ def read_root():
 if __name__ == "__main__":
     import uvicorn
     # run app on localhost at port 8000 with auto-reloading enabled
-    uvicorn.run(app, host ="0.0.0.0", port = 8000, reload = True)
+    # use import string "main:app" so uvicorn can reload on file changes
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
