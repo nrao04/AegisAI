@@ -150,4 +150,4 @@ Sends a sample log message to the `logs` topic. Extend `log_ingestion.py` for re
 
 ## License
 
-*(Add your license here, e.g. MIT, Apache 2.0.)*
+MIT License

@@ -19,9 +19,9 @@ Follow these in order. Complete one step (and test it) before moving to the next
 
 ## Phase 2: Kafka consumer & incident model
 
-- [ ] **2.1** Define a minimal **incident** model (e.g. in `backend/models/` or `backend/schemas/`): `id`, `title`, `severity`, `source`, `raw_log`, `created_at`, `status`.
-- [ ] **2.2** Add a **Kafka consumer** in `backend/services/` that reads from the `logs` topic, parses each message, and creates an in-memory incident (or a simple list/dict for now). Log “Incident created: …” so you can verify.
-- [ ] **2.3** Wire the consumer to run alongside the API (e.g. background task on startup) or as a separate script. Ensure one “test” log from the producer results in one incident logged.
+- [x] **2.1** Define a minimal **incident** model (e.g. in `backend/models/` or `backend/schemas/`): `id`, `title`, `severity`, `source`, `raw_log`, `created_at`, `status`.
+- [x] **2.2** Add a **Kafka consumer** in `backend/services/` that reads from the `logs` topic, parses each message, and creates an in-memory incident (or a simple list/dict for now). Log “Incident created: …” so you can verify.
+- [x] **2.3** Wire the consumer to run alongside the API (e.g. background task on startup) or as a separate script. Ensure one “test” log from the producer results in one incident logged.
 
 ---
 
