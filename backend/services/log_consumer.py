@@ -3,15 +3,18 @@ Kafka consumer for the logs topic. Creates an incident per message and stores in
 Run as script: python -m services.log_consumer (from backend/)
 Or run alongside the API via FastAPI lifespan (see main.py).
 """
-from aiokafka import AIOKafkaConsumer
-from datetime import datetime
 import asyncio
 import logging
+import os
+from datetime import datetime
+
+from aiokafka import AIOKafkaConsumer
 
 from schemas import Incident
-from store import add_incident
+from db import insert_incident, init_db
+from services.search import init_index, index_incident
 
-BOOTSTRAP_SERVERS = "127.0.0.1:9092"
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP", "127.0.0.1:9092")
 LOGS_TOPIC = "logs"
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +36,10 @@ def _log_to_incident(raw_bytes: bytes) -> Incident:
 
 
 async def run_consumer():
+    # Ensure DB schema and search index exist before consuming.
+    init_db()
+    init_index()
+
     consumer = AIOKafkaConsumer(
         LOGS_TOPIC,
         bootstrap_servers=BOOTSTRAP_SERVERS,
@@ -42,8 +49,14 @@ async def run_consumer():
     try:
         async for msg in consumer:
             incident = _log_to_incident(msg.value)
-            add_incident(incident)
-            logger.info("Incident created: id=%s title=%r", incident.id, incident.title)
+            insert_incident(incident)
+            # Best-effort indexing into Elasticsearch.
+            index_incident(incident)
+            logger.info(
+                "Incident created, stored, and indexed: id=%s title=%r",
+                incident.id,
+                incident.title,
+            )
     finally:
         await consumer.stop()
 

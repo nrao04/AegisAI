@@ -1,7 +1,9 @@
+import os
+
 from aiokafka import AIOKafkaProducer
 import asyncio
 
-BOOTSTRAP_SERVERS = "127.0.0.1:9092"
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP", "127.0.0.1:9092")
 
 
 async def send_log_message():

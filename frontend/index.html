@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AegisAI – Incident Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #050816;
+        color: #e5e7eb;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #111827;
+        background: linear-gradient(to right, #030712, #0f172a);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+      main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1.2fr 1.8fr;
+        gap: 1px;
+        background: #111827;
+      }
+      section {
+        padding: 1rem;
+        background: #020617;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #9ca3af;
+      }
+      #incident-list {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0;
+      }
+      .incident-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.35rem;
+        background: #020617;
+        border: 1px solid #111827;
+        transition: background 0.15s ease, border-color 0.15s ease,
+          transform 0.05s ease;
+      }
+      .incident-item:hover {
+        background: #030712;
+        border-color: #1d4ed8;
+        transform: translateY(-1px);
+      }
+      .incident-item.active {
+        border-color: #22c55e;
+        background: #022c22;
+      }
+      .incident-title {
+        font-size: 0.85rem;
+      }
+      .incident-meta {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        display: flex;
+        gap: 0.5rem;
+      }
+      .badge {
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+      }
+      .badge-high {
+        background: rgba(248, 113, 113, 0.1);
+        color: #fecaca;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+      }
+      .badge-medium {
+        background: rgba(251, 191, 36, 0.08);
+        color: #facc15;
+        border: 1px solid rgba(234, 179, 8, 0.4);
+      }
+      .badge-low {
+        background: rgba(34, 197, 94, 0.08);
+        color: #bbf7d0;
+        border: 1px solid rgba(34, 197, 94, 0.4);
+      }
+      .detail-box {
+        border-radius: 0.5rem;
+        border: 1px solid #111827;
+        padding: 0.75rem;
+        background: #020617;
+        font-size: 0.8rem;
+        max-height: 40vh;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .detail-header h3 {
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      .detail-meta {
+        font-size: 0.75rem;
+        color: #9ca3af;
+      }
+      .chat-container {
+        margin-top: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #111827;
+        background: #020617;
+        padding: 0.75rem;
+      }
+      .chat-log {
+        max-height: 24vh;
+        overflow: auto;
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+      }
+      .chat-input-row {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .chat-input-row input {
+        flex: 1;
+        background: #020617;
+        border: 1px solid #1f2937;
+        border-radius: 999px;
+        padding: 0.35rem 0.75rem;
+        color: #e5e7eb;
+        font-size: 0.8rem;
+      }
+      .chat-input-row button {
+        background: linear-gradient(to right, #22c55e, #16a34a);
+        border: none;
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        color: #020617;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .chat-input-row button:hover {
+        filter: brightness(1.05);
+      }
+      .chat-msg {
+        margin-bottom: 0.35rem;
+      }
+      .chat-msg.user {
+        color: #a5b4fc;
+      }
+      .chat-msg.bot {
+        color: #e5e7eb;
+      }
+      .pill {
+        display: inline-block;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        border: 1px solid #1f2937;
+        color: #9ca3af;
+      }
+      footer {
+        padding: 0.5rem 1.5rem;
+        font-size: 0.7rem;
+        color: #6b7280;
+        border-top: 1px solid #111827;
+        background: #020617;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>AegisAI – Incidents &amp; Chat</h1>
+      <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem">
+        Backed by FastAPI, Kafka, PostgreSQL, and Elasticsearch.
+      </div>
+    </header>
+    <main>
+      <section>
+        <h2>Incidents</h2>
+        <div class="pill" id="summary-pill">Loading incidents…</div>
+        <ul id="incident-list"></ul>
+      </section>
+      <section>
+        <h2>Details &amp; Chat</h2>
+        <div class="detail-box" id="detail-box">
+          Select an incident to see details here.
+        </div>
+        <div class="chat-container">
+          <div class="chat-log" id="chat-log"></div>
+          <div class="chat-input-row">
+            <input
+              id="chat-input"
+              placeholder="Ask e.g. 'what's broken right now?'"
+            />
+            <button id="chat-send">Ask</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      AegisAI – personal project walkthrough for Firetiger. Powered by
+      AegisAI backend APIs.
+    </footer>
+    <script src="./app.js"></script>
+  </body>
+</html>
+
