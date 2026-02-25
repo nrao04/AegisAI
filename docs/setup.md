@@ -130,7 +130,4 @@ If you prefer to run pieces yourself:
      ```
    - Confirm the updated status via `GET /incidents/{id}`.
 
----
-
-You now have a full local AegisAI stack running, ready for experimentation and for the Firetiger walkthrough demo. 
 

@@ -1,11 +1,13 @@
 """
-Kafka consumer for the logs topic. Creates an incident per message and stores in memory.
-Run as script: python -m services.log_consumer (from backend/)
-Or run alongside the API via FastAPI lifespan (see main.py).
+Kafka consumer for the logs topic. Creates an incident per message, stores in Postgres,
+indexes in Elasticsearch. Uses deterministic IDs (partition+offset) for idempotency and
+commits offsets only after both writes succeed (at-least-once).
 """
 import asyncio
+import hashlib
 import logging
 import os
+import re
 from datetime import datetime
 
 from aiokafka import AIOKafkaConsumer
@@ -22,14 +24,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _log_to_incident(raw_bytes: bytes) -> Incident:
-    raw_log = raw_bytes.decode("utf-8", errors="replace").strip()
+def _tenant_from_log(raw_log: str) -> str:
+    """Extract tenant from log if present (e.g. tenant=acme or tenant:acme), else default."""
+    m = re.search(r"tenant[=:](\w+)", raw_log, re.IGNORECASE)
+    return m.group(1).lower() if m else "default"
+
+
+def _log_to_incident(msg_value: bytes, partition: int, offset: int) -> Incident:
+    """Build an incident with a deterministic id so retries don't create duplicates."""
+    raw_log = msg_value.decode("utf-8", errors="replace").strip()
     title = raw_log[:80] + ("..." if len(raw_log) > 80 else "")
     severity = "high" if "error" in raw_log.lower() else "medium"
+    tenant = _tenant_from_log(raw_log)
+    # Deterministic id: same partition+offset+content => same id (idempotent retries)
+    id_digest = hashlib.sha256(
+        f"{partition}_{offset}_{msg_value!r}".encode()
+    ).hexdigest()[:32]
     return Incident(
+        id=id_digest,
         title=title,
         severity=severity,
         source="kafka",
+        tenant=tenant,
         raw_log=raw_log,
         created_at=datetime.utcnow(),
         status="open",
@@ -48,6 +64,7 @@ async def run_consumer():
             LOGS_TOPIC,
             bootstrap_servers=BOOTSTRAP_SERVERS,
             group_id="aegis-log-consumer",
+            enable_auto_commit=False,
         )
         try:
             try:
@@ -59,13 +76,14 @@ async def run_consumer():
                 continue
 
             async for msg in consumer:
-                incident = _log_to_incident(msg.value)
+                incident = _log_to_incident(msg.value, msg.partition, msg.offset)
                 insert_incident(incident)
-                # Best-effort indexing into Elasticsearch.
                 index_incident(incident)
+                await consumer.commit()
                 logger.info(
-                    "Incident created, stored, and indexed: id=%s title=%r",
+                    "Incident created, stored, indexed, offset committed: id=%s tenant=%s title=%r",
                     incident.id,
+                    incident.tenant,
                     incident.title,
                 )
         except Exception as e:

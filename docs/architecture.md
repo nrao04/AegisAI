@@ -85,7 +85,7 @@ This pipeline decouples **log production** from **incident processing**, and mak
   - `PATCH /incidents/{id}` – update incident status (open → acknowledged → resolved).
   - `POST /incidents` – manually create incidents (useful for tests).
   - `GET /incidents/search?q=` – search incidents via Elasticsearch.
-- On startup, the FastAPI app also launches the Kafka consumer in a background task.
+- The Kafka consumer runs as a separate process (or container), reading from the same Kafka topic and writing to Postgres and Elasticsearch; the API only reads from the stores.
 
 ### 6. Chatbot – AI and automation layer
 
@@ -116,6 +116,4 @@ This pipeline decouples **log production** from **incident processing**, and mak
 4. **Indexing** – Incidents are indexed into Elasticsearch for flexible search.
 5. **Access** – FastAPI exposes REST endpoints for listing, searching, and updating incidents.
 6. **Experience** – The chatbot and frontend sit on top, turning raw telemetry into incident-centric views and narratives focused on customer impact.
-
-This design keeps ingestion, storage, search, and presentation **loosely coupled**, making it straightforward to evolve into a more scalable “bring your own cloud + open table formats” architecture similar to what Firetiger is building.
 

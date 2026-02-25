@@ -10,7 +10,7 @@ async def send_log_message():
     producer = AIOKafkaProducer(bootstrap_servers=BOOTSTRAP_SERVERS)
     try:
         await producer.start()
-        log_message = b"Error: High CPU detected in Service A"
+        log_message = b"Error: High CPU detected in Service A (tenant=acme)"
         await producer.send_and_wait("logs", log_message)
         print("Log message sent successfully.")
     finally:

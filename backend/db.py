@@ -43,10 +43,24 @@ def init_db() -> None:
                         title TEXT NOT NULL,
                         severity TEXT NOT NULL,
                         source TEXT NOT NULL,
+                        tenant TEXT NOT NULL DEFAULT 'default',
                         raw_log TEXT NOT NULL,
                         created_at TIMESTAMPTZ NOT NULL,
                         status TEXT NOT NULL
                     );
+                    """
+                )
+                # Add tenant column if table already existed from an older schema
+                cur.execute(
+                    """
+                    DO $$ BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = 'incidents' AND column_name = 'tenant'
+                        ) THEN
+                            ALTER TABLE incidents ADD COLUMN tenant TEXT NOT NULL DEFAULT 'default';
+                        END IF;
+                    END $$
                     """
                 )
     finally:
@@ -62,15 +76,23 @@ def insert_incident(incident: Incident) -> None:
                 cur.execute(
                     """
                     INSERT INTO incidents (
-                        id, title, severity, source, raw_log, created_at, status
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (id) DO NOTHING;
+                        id, title, severity, source, tenant, raw_log, created_at, status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        severity = EXCLUDED.severity,
+                        source = EXCLUDED.source,
+                        tenant = EXCLUDED.tenant,
+                        raw_log = EXCLUDED.raw_log,
+                        created_at = EXCLUDED.created_at,
+                        status = EXCLUDED.status;
                     """,
                     (
                         incident.id,
                         incident.title,
                         incident.severity,
                         incident.source,
+                        getattr(incident, "tenant", "default"),
                         incident.raw_log,
                         incident.created_at,
                         incident.status,

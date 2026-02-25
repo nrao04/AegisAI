@@ -49,6 +49,7 @@ def init_index() -> None:
                         "title": {"type": "text"},
                         "severity": {"type": "keyword"},
                         "source": {"type": "keyword"},
+                        "tenant": {"type": "keyword"},
                         "raw_log": {"type": "text"},
                         "created_at": {"type": "date"},
                         "status": {"type": "keyword"},
@@ -65,7 +66,11 @@ def index_incident(incident: Incident) -> None:
     """Index a single incident document in Elasticsearch."""
     try:
         es = _get_client()
-        es.index(index=INDEX_NAME, id=incident.id, document=incident.dict())
+        try:
+            doc = incident.model_dump(mode="json")
+        except AttributeError:
+            doc = incident.dict()
+        es.index(index=INDEX_NAME, id=incident.id, document=doc)
     except Exception:
         # Swallow indexing errors for now; they shouldn't break ingestion.
         return
@@ -83,13 +88,18 @@ def search_incidents(query: str, limit: int = 50) -> List[Incident]:
             "query": {
                 "multi_match": {
                     "query": query,
-                    "fields": ["title", "raw_log", "severity", "source"],
+                    "fields": ["title", "raw_log", "severity", "source", "tenant"],
                 }
             }
         }
         resp = es.search(index=INDEX_NAME, body=body, size=limit)
         hits = resp.get("hits", {}).get("hits", [])
-        return [Incident(**hit["_source"]) for hit in hits]
+        out = []
+        for hit in hits:
+            src = hit["_source"]
+            src.setdefault("tenant", "default")
+            out.append(Incident(**src))
+        return out
     except Exception:
         return []
 

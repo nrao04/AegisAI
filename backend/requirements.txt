@@ -5,3 +5,4 @@ kafka-python
 elasticsearch
 psycopg2-binary
 aiokafka
+pytest

@@ -66,12 +66,16 @@ function renderIncidents() {
 
     const right = document.createElement("div");
     right.className = "incident-meta";
+    const tenant = document.createElement("span");
+    tenant.className = "pill";
+    tenant.textContent = inc.tenant || "default";
     const sev = document.createElement("span");
     sev.className = severityClass(inc.severity);
     sev.textContent = inc.severity || "unknown";
     const status = document.createElement("span");
     status.textContent = inc.status || "open";
 
+    right.appendChild(tenant);
     right.appendChild(sev);
     right.appendChild(status);
     li.appendChild(left);
@@ -96,17 +100,19 @@ function renderIncidentDetail(inc) {
   const title = inc.title || "(no title)";
   const sev = inc.severity || "unknown";
   const status = inc.status || "open";
+  const tenant = inc.tenant || "default";
   const raw = inc.raw_log || "";
 
   detailBoxEl.innerHTML = `
     <div class="detail-header">
       <h3>${title}</h3>
       <div class="detail-meta">
+        <span class="pill">${tenant}</span>
         <span class="badge ${severityClass(sev)}">${sev}</span>
         <span>${status}</span>
       </div>
     </div>
-    <div class="detail-meta">Created at: ${created}</div>
+    <div class="detail-meta">Tenant: ${tenant} · Created at: ${created}</div>
     <hr style="border-color:#111827;margin:0.5rem 0;" />
     <div>${raw.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
   `;
@@ -138,11 +144,14 @@ async function handleChat() {
     const total = incidents.length;
     const bySeverity = {};
     const byStatus = {};
+    const byTenant = {};
     incidents.forEach((i) => {
       const sev = (i.severity || "unknown").toLowerCase();
       const status = (i.status || "open").toLowerCase();
+      const tenant = (i.tenant || "default").toLowerCase();
       bySeverity[sev] = (bySeverity[sev] || 0) + 1;
       byStatus[status] = (byStatus[status] || 0) + 1;
+      byTenant[tenant] = (byTenant[tenant] || 0) + 1;
     });
     const sevParts = Object.entries(bySeverity)
       .sort((a, b) => b[1] - a[1])
@@ -152,14 +161,18 @@ async function handleChat() {
       .sort((a, b) => b[1] - a[1])
       .map(([status, count]) => `${count} ${status}`)
       .join(", ");
+    const tenantParts = Object.entries(byTenant)
+      .sort((a, b) => b[1] - a[1])
+      .map(([t, count]) => `${count} ${t}`)
+      .join(", ");
 
-    let summary = `I see ${total} recent incident(s).\nBy severity: ${sevParts}.\nBy status: ${statusParts}.`;
+    let summary = `I see ${total} recent incident(s).\nBy severity: ${sevParts}.\nBy status: ${statusParts}.\nBy tenant: ${tenantParts}.`;
     const examples = incidents.slice(0, 3);
     if (examples.length) {
       summary += "\nExamples:\n" + examples
         .map(
           (i) =>
-            `- [${i.severity || "unknown"}/${i.status || "open"}] ${
+            `- [${i.tenant || "default"}] [${i.severity || "unknown"}/${i.status || "open"}] ${
               i.title || "(no title)"
             }`
         )

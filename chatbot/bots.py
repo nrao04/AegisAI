@@ -42,6 +42,7 @@ def summarize_incidents(limit: int = 50) -> str:
 
     severities = Counter(i.get("severity", "unknown") for i in incidents)
     statuses = Counter(i.get("status", "unknown") for i in incidents)
+    tenants = Counter(i.get("tenant", "default") for i in incidents)
 
     lines = []
     total = len(incidents)
@@ -55,15 +56,20 @@ def summarize_incidents(limit: int = 50) -> str:
         status_parts = [f"{count} {status}" for status, count in statuses.most_common()]
         lines.append("By status: " + ", ".join(status_parts) + ".")
 
+    if tenants:
+        tenant_parts = [f"{count} {t}" for t, count in tenants.most_common()]
+        lines.append("By tenant: " + ", ".join(tenant_parts) + ".")
+
     # Highlight a few example incidents.
     examples = incidents[:3]
     if examples:
         lines.append("Examples:")
         for inc in examples:
             title = inc.get("title") or "(no title)"
+            tenant = inc.get("tenant", "default")
             sev = inc.get("severity", "unknown")
             status = inc.get("status", "unknown")
-            lines.append(f"- [{sev}/{status}] {title}")
+            lines.append(f"- [{tenant}] [{sev}/{status}] {title}")
 
     return "\n".join(lines)
 
