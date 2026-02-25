@@ -2,7 +2,7 @@ fastapi
 uvicorn
 pydantic
 kafka-python
-elasticsearch
+elasticsearch>=8.13,<9
 psycopg2-binary
 aiokafka
 pytest

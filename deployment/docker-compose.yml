@@ -24,6 +24,12 @@ services:
       - "9200:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   kafka:
     image: apache/kafka:latest
@@ -55,9 +61,9 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
-      - elasticsearch
-      - kafka
+      postgres: { condition: service_started }
+      elasticsearch: { condition: service_healthy }
+      kafka: { condition: service_started }
 
   log-consumer:
     build:
@@ -71,9 +77,9 @@ services:
       ELASTICSEARCH_INDEX: incidents
       KAFKA_BOOTSTRAP: kafka:29092
     depends_on:
-      - postgres
-      - elasticsearch
-      - kafka
+      postgres: { condition: service_started }
+      elasticsearch: { condition: service_healthy }
+      kafka: { condition: service_started }
 
 volumes:
   postgres_data:
