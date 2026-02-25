@@ -12,7 +12,7 @@ Environment variables:
 import os
 from typing import List
 
-from elasticsearch import Elasticsearch, exceptions as es_exceptions
+from elasticsearch import Elasticsearch
 
 from schemas import Incident
 
@@ -56,7 +56,7 @@ def init_index() -> None:
                 }
             },
         )
-    except es_exceptions.ElasticsearchException:
+    except Exception:
         # Fail silently in Phase 5; API will still work with PostgreSQL only.
         return
 
@@ -66,7 +66,7 @@ def index_incident(incident: Incident) -> None:
     try:
         es = _get_client()
         es.index(index=INDEX_NAME, id=incident.id, document=incident.dict())
-    except es_exceptions.ElasticsearchException:
+    except Exception:
         # Swallow indexing errors for now; they shouldn't break ingestion.
         return
 
@@ -90,6 +90,6 @@ def search_incidents(query: str, limit: int = 50) -> List[Incident]:
         resp = es.search(index=INDEX_NAME, body=body, size=limit)
         hits = resp.get("hits", {}).get("hits", [])
         return [Incident(**hit["_source"]) for hit in hits]
-    except es_exceptions.ElasticsearchException:
+    except Exception:
         return []
 

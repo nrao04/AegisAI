@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import FastAPI, HTTPException
@@ -9,22 +8,7 @@ from schemas import Incident
 from services.search import search_incidents
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Start Kafka consumer in background when API starts; stop on shutdown."""
-    import asyncio
-    from services.log_consumer import run_consumer
-
-    task = asyncio.create_task(run_consumer())
-    yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 @app.get("/")
@@ -52,6 +36,16 @@ def read_incident(incident_id: str):
 class IncidentStatusUpdate(BaseModel):
     status: str = Field(..., description="New status, e.g. open, acknowledged, resolved")
 
+@app.get("/incidents/search", response_model=List[Incident])
+def search_incidents_endpoint(q: str, limit: int = 50):
+    """
+    Full-text search over incidents using Elasticsearch.
+
+    Falls back to an empty list if Elasticsearch is unavailable.
+    """
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be positive")
+    return search_incidents(query=q, limit=limit)
 
 @app.patch("/incidents/{incident_id}", response_model=Incident)
 def update_incident_status(incident_id: str, payload: IncidentStatusUpdate):
@@ -84,18 +78,6 @@ def create_incident(incident: Incident):
 
     insert_incident(incident)
     return incident
-
-
-@app.get("/incidents/search", response_model=List[Incident])
-def search_incidents_endpoint(q: str, limit: int = 50):
-    """
-    Full-text search over incidents using Elasticsearch.
-
-    Falls back to an empty list if Elasticsearch is unavailable.
-    """
-    if limit <= 0:
-        raise HTTPException(status_code=400, detail="limit must be positive")
-    return search_incidents(query=q, limit=limit)
 
 
 if __name__ == "__main__":

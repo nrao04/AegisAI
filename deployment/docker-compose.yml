@@ -59,6 +59,22 @@ services:
       - elasticsearch
       - kafka
 
+  log-consumer:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: aegis-log-consumer
+    command: ["python", "-m", "services.log_consumer"]
+    environment:
+      DATABASE_URL: postgresql://aegis:aegis@postgres:5432/aegisai
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_INDEX: incidents
+      KAFKA_BOOTSTRAP: kafka:29092
+    depends_on:
+      - postgres
+      - elasticsearch
+      - kafka
+
 volumes:
   postgres_data:
   es_data:
