@@ -6,72 +6,82 @@ Follow these in order. Complete one step (and test it) before moving to the next
 
 ## Phase 1: Local dev & infra (run what you have)
 
-- [ ] **1.1** Add a proper `.gitignore` (e.g. `venv/`, `__pycache__/`, `.env`, `node_modules/`).
-- [ ] **1.2** Run the backend: `cd backend && pip install -r requirements.txt && python main.py` → confirm http://localhost:8000 and /docs work.
-- [ ] **1.3** Start Kafka locally. Pick one:
-  - **Option A (recommended):** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/), then from the **project root (AegisAI/)** run:  
-    `docker compose -f deployment/docker-compose.kafka-only.yml up -d`  
-    (Or: `docker run -d -p 9092:9092 apache/kafka` for a single container.)
+- [x] **1.1** Add a proper `.gitignore` (e.g. `venv/`, `__pycache__/`, `.env`, `node_modules/`).
+- [x] **1.2** Run the backend: `cd backend && pip install -r requirements.txt && python main.py` → confirm http://localhost:8000 and /docs work.
+- [x] **1.3** Start Kafka locally. Pick one:
+  - **Option A (recommended):** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/), then from the **project root (AegisAI/)** run:
+    `docker compose -f deployment/docker-compose.yml up -d`
   - **Option B (no Docker):** Install Kafka via Homebrew: `brew install kafka` then `brew services start zookeeper` and `brew services start kafka`. Broker will be on `localhost:9092`.
-- [ ] **1.4** Run the log producer: `python -m services.log_ingestion` from `backend/` (with `.venv` active). Confirm the message is produced (check Kafka topic or logs).
+- [x] **1.4** Run the log producer: `python -m services.log_ingestion` from `backend/` (with `.venv` active). Confirm the message is produced (check Kafka topic or logs).
 
 ---
 
 ## Phase 2: Kafka consumer & incident model
 
-- [x] **2.1** Define a minimal **incident** model (e.g. in `backend/models/` or `backend/schemas/`): `id`, `title`, `severity`, `source`, `raw_log`, `created_at`, `status`.
-- [x] **2.2** Add a **Kafka consumer** in `backend/services/` that reads from the `logs` topic, parses each message, and creates an in-memory incident (or a simple list/dict for now). Log “Incident created: …” so you can verify.
-- [x] **2.3** Wire the consumer to run alongside the API (e.g. background task on startup) or as a separate script. Ensure one “test” log from the producer results in one incident logged.
+- [x] **2.1** Define a minimal **incident** model (in `backend/schemas/incident.py`): `id`, `title`, `severity`, `source`, `raw_log`, `created_at`, `status`, `tenant`.
+- [x] **2.2** Add a **Kafka consumer** in `backend/services/log_consumer.py` that reads from the `logs` topic, parses each message, and creates an incident. Includes deterministic IDs (partition+offset), deduplication (5-min window), and Slack notifications.
+- [x] **2.3** Wire the consumer to run alongside the API or as a separate `log-consumer` Docker service.
 
 ---
 
 ## Phase 3: Persistence (PostgreSQL)
 
-- [x] **3.1** Add a **PostgreSQL** dependency and connection (e.g. `asyncpg` or keep `psycopg2`; use env vars for connection string). Create a `backend/db/` or `backend/database/` module.  
-      → Implemented in `backend/requirements.txt` (via `psycopg2-binary`) and `backend/db.py`, using `DATABASE_URL` for configuration.
-- [x] **3.2** Add an **incidents** table (columns matching your incident model). Provide a simple migration or init script (e.g. `CREATE TABLE` in a `scripts/` or `db/` folder).  
-      → `db.init_db()` creates an `incidents` table with `id`, `title`, `severity`, `source`, `raw_log`, `created_at`, and `status` columns if it does not exist.
-- [x] **3.3** When the consumer creates an incident, **insert it into PostgreSQL** instead of (or in addition to) in-memory. Verify with `psql` or a DB client.  
-      → `services/log_consumer.py` now calls `insert_incident(incident)` from `db.py` and logs “Incident created and stored …”.
+- [x] **3.1** Add PostgreSQL dependency and `ThreadedConnectionPool` (`backend/db.py`), configured via `DATABASE_URL`.
+- [x] **3.2** `incidents` table + `incident_events` audit table auto-created by `init_db()` on startup.
+- [x] **3.3** Consumer and API both write incidents to PostgreSQL. Events (created, status_change, runbook_generated) logged to `incident_events`.
 
 ---
 
 ## Phase 4: REST API for incidents
 
-- [x] **4.1** Add **GET /incidents** (list, with optional limit) and **GET /incidents/{id}** (single incident) using FastAPI. Read from PostgreSQL.  
-      → Implemented in `backend/main.py` using `db.get_incidents` and `db.get_incident`.
-- [x] **4.2** Add **PATCH /incidents/{id}** (e.g. update `status`: open → acknowledged → resolved). Validate with Pydantic.  
-      → Implemented as `PATCH /incidents/{incident_id}` with `IncidentStatusUpdate` payload; persists via `insert_incident`.
-- [x] **4.3** Optionally add **POST /incidents** to create an incident manually (useful for testing). Document in OpenAPI (/docs).  
-      → Implemented as `POST /incidents` accepting an `Incident` body and storing it via `insert_incident`.
+- [x] **4.1** `GET /incidents` and `GET /incidents/{id}` — read from PostgreSQL.
+- [x] **4.2** `PATCH /incidents/{id}` — update status; logs `status_change` event; fires Slack alert on resolve.
+- [x] **4.3** `POST /incidents` — manual creation. `POST /ingest` — HTTP log ingest without Kafka.
+- [x] **4.4** `GET /stats` — 24-hour operational stats (open, resolved, high, medium counts).
+- [x] **4.5** `GET /incidents/{id}/events` — full audit trail per incident.
 
 ---
 
-## Phase 5: Search (Elasticsearch) — optional next
+## Phase 5: Search (Elasticsearch)
 
-- [x] **5.1** Run Elasticsearch locally (Docker). Add a small `backend/services/search.py` that indexes incident (or log) documents.  
-      → Implemented in `backend/services/search.py` with `init_index`, `index_incident`, and `search_incidents`.
-- [x] **5.2** Add **GET /incidents/search?q=...** that queries Elasticsearch and returns matching incidents (or fallback to DB if you prefer to keep it simple first).  
-      → Implemented as `GET /incidents/search?q=...&limit=...` in `backend/main.py`, using `search_incidents`; returns an empty list if Elasticsearch is unavailable.
+- [x] **5.1** `backend/services/search.py` with `init_index`, `index_incident`, `search_incidents`. Thread-safe singleton with graceful degradation.
+- [x] **5.2** `GET /incidents/search?q=...` — full-text Elasticsearch search; returns empty list if ES unavailable.
 
 ---
 
 ## Phase 6: Deployment & docs
 
-- [x] **6.1** Fill **deployment/docker-compose.yml**: backend, Kafka, PostgreSQL, (optional) Elasticsearch. One command to bring the stack up.  
-      → Implemented in `deployment/docker-compose.yml` with services for `backend`, `postgres`, `elasticsearch`, and `kafka`.
-- [x] **6.2** Write **docs/setup.md** (prerequisites, env vars, how to run backend + Kafka + DB + consumer).  
-      → Implemented as a full setup guide covering Docker Compose and manual runs.
-- [x] **6.3** Write **docs/architecture.md** (data flow, components, where incidents live and how they’re updated).  
-      → Implemented with an end-to-end architecture overview and component breakdown.
+- [x] **6.1** `deployment/docker-compose.yml` — postgres, elasticsearch, kafka, backend, log-consumer, frontend (nginx). All services with `restart: unless-stopped` and health checks.
+- [x] **6.2** `docs/setup.md` — prerequisites, env vars, how to run full stack.
+- [x] **6.3** `docs/architecture.md` — data flow, components, incident lifecycle.
+- [x] **6.4** `.env.example` — all required environment variables documented.
 
 ---
 
-## Phase 7: Chatbot & frontend (later)
+## Phase 7: Chatbot & frontend
 
-- [x] **7.1** Implement **chatbot/bots.py**: connect to an LLM or rules engine; given “what’s broken?” call GET /incidents and summarize.  
-      → Implemented a lightweight rule-based bot in `chatbot/bots.py` that calls the incidents API and summarizes by severity/status.
-- [x] **7.2** Bootstrap **frontend** (e.g. React/Next or Vue) with `package.json`, list incidents from GET /incidents, show detail on click.  
-      → Implemented a minimal vanilla JS dashboard in `frontend/index.html` + `frontend/app.js` with `frontend/package.json` (simple `start` script).
-- [x] **7.3** Add a simple chat UI in the frontend that talks to the chatbot (or to an API that wraps the bot).  
-      → Implemented a basic chat box in the frontend that mimics the chatbot’s “what’s broken right now?” behavior client-side using the `/incidents` API.
+- [x] **7.1** `backend/services/chatbot.py` — Claude-powered AI assistant with rule-based fallback. `POST /chat` endpoint.
+- [x] **7.2** `frontend/index.html` — futuristic dark dashboard (glassmorphism, design tokens, severity color coding).
+- [x] **7.3** `frontend/app.js` — WebSocket real-time feed, filters, full-text search, chat, runbook generation, audit timeline.
+
+---
+
+## Phase 8: AI runbooks, Slack alerts, real-time (completed)
+
+- [x] **8.1** `backend/services/runbook.py` — `POST /incidents/{id}/runbook` generates a 4-section AI remediation playbook via Claude (template fallback when no API key).
+- [x] **8.2** `backend/services/notifier.py` — Slack Block Kit alerts for HIGH/CRITICAL incidents on create and resolve.
+- [x] **8.3** WebSocket broadcaster (`/ws/incidents`) — pushes incident list to all connected clients within 5 s of any change.
+- [x] **8.4** Deduplication — `check_duplicate()` with 5-minute window suppresses alert storms from repeated log errors.
+- [x] **8.5** Audit trail — every create, status change, and runbook generation logged to `incident_events`; visible in the frontend timeline.
+
+---
+
+## Phase 9: Potential next improvements
+
+- [ ] **9.1** **Authentication** — JWT or API-key auth on all endpoints; per-tenant access control.
+- [ ] **9.2** **Incident correlation** — group related incidents by pattern matching or embedding similarity.
+- [ ] **9.3** **MTTR / MTTD metrics** — time-to-detect and time-to-resolve dashboards.
+- [ ] **9.4** **Multi-source ingestion** — AWS CloudWatch, Datadog, PagerDuty, webhook adapters.
+- [ ] **9.5** **Alerting rules** — configurable thresholds (e.g. "alert if >10 HIGH incidents in 1 min").
+- [ ] **9.6** **Persistent chat history** — store and recall conversation context across sessions.
+- [ ] **9.7** **Runbook versioning** — diff runbooks over time; allow operator edits.
