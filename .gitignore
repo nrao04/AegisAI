@@ -22,6 +22,8 @@ out/
 # IDE / OS
 .idea/
 .vscode/
+.claude/
+.claire/
 .DS_Store
 *.swp
 *.swo
