@@ -2,6 +2,9 @@
 Kafka consumer for the logs topic. Creates an incident per message, stores in Postgres,
 indexes in Elasticsearch. Uses deterministic IDs (partition+offset) for idempotency and
 commits offsets only after both writes succeed (at-least-once).
+
+Deduplication: skips messages whose title+source already have an OPEN incident
+within a 5-minute window, preventing alert storms from high-frequency log errors.
 """
 import asyncio
 import hashlib
@@ -14,8 +17,9 @@ from aiokafka import AIOKafkaConsumer
 from aiokafka.errors import KafkaConnectionError
 
 from schemas import Incident
-from db import insert_incident, init_db
+from db import insert_incident, init_db, check_duplicate, log_event
 from services.search import init_index, index_incident
+from services.notifier import notify_new_incident
 
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP", "127.0.0.1:9092")
 LOGS_TOPIC = "logs"
@@ -77,15 +81,27 @@ async def run_consumer():
 
             async for msg in consumer:
                 incident = _log_to_incident(msg.value, msg.partition, msg.offset)
+
+                # Deduplication: skip if an open incident with same title+source
+                # already exists within the last 5 minutes (alert storm guard)
+                if check_duplicate(incident.title, incident.source, window_minutes=5):
+                    logger.info(
+                        "Skipping duplicate incident (title=%r source=%s)",
+                        incident.title, incident.source,
+                    )
+                    await consumer.commit()
+                    continue
+
                 insert_incident(incident)
+                log_event(incident.id, "created", incident.title)
                 index_incident(incident)
+                notify_new_incident(incident)
                 await consumer.commit()
                 logger.info(
-                    "Incident created, stored, indexed, offset committed: id=%s tenant=%s title=%r",
-                    incident.id,
-                    incident.tenant,
-                    incident.title,
+                    "Incident created id=%s tenant=%s severity=%s title=%r",
+                    incident.id, incident.tenant, incident.severity, incident.title,
                 )
+
         except Exception as e:
             logger.exception("Error in Kafka consumer loop; restarting in 5s: %s", e)
             await asyncio.sleep(5)

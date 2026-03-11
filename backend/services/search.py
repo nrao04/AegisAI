@@ -11,6 +11,7 @@ Environment variables:
 
 import logging
 import os
+import threading
 import time
 from typing import List
 
@@ -24,6 +25,7 @@ ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
 INDEX_NAME = os.getenv("ELASTICSEARCH_INDEX", "incidents")
 
 _client: Elasticsearch | None = None
+_client_lock = threading.Lock()
 
 # ES 8.x mapping for incidents index
 INCIDENT_MAPPINGS = {
@@ -43,7 +45,9 @@ INCIDENT_MAPPINGS = {
 def _get_client() -> Elasticsearch:
     global _client
     if _client is None:
-        _client = Elasticsearch(ELASTICSEARCH_URL)
+        with _client_lock:
+            if _client is None:
+                _client = Elasticsearch(ELASTICSEARCH_URL)
     return _client
 
 

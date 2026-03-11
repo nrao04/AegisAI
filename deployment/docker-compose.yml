@@ -58,6 +58,8 @@ services:
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_INDEX: incidents
       KAFKA_BOOTSTRAP: kafka:29092
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -76,12 +78,22 @@ services:
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_INDEX: incidents
       KAFKA_BOOTSTRAP: kafka:29092
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     depends_on:
       postgres: { condition: service_started }
       elasticsearch: { condition: service_healthy }
       kafka: { condition: service_started }
 
+  frontend:
+    image: nginx:alpine
+    container_name: aegis-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ../frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   es_data:
-

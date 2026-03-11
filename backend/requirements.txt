@@ -5,4 +5,5 @@ kafka-python
 elasticsearch>=8.13,<9
 psycopg2-binary
 aiokafka
+anthropic
 pytest
