@@ -136,6 +136,9 @@ python backend/seed.py
 ```
 
 Or ingest a single log manually:
+
+```bash
+# Ingest a log
 curl -s -X POST http://localhost:8000/ingest \
   -H "Content-Type: application/json" \
   -d '{"log": "ERROR: database connection pool exhausted", "source": "api-gateway"}' \
@@ -220,7 +223,7 @@ DATABASE_URL="postgresql://aegis:aegis@localhost:5432/aegisai" pytest tests/ -v
 | Streaming | Kafka (aiokafka) |
 | Search | Elasticsearch 8.x |
 | Database | PostgreSQL 16 (psycopg2) |
-| AI | Claude claude-opus-4-6 (Anthropic) |
+| AI | Claude claude-sonnet-4-6 (Anthropic) |
 | Frontend | Vanilla JS, WebSocket, CSS glassmorphism |
 | Alerts | Slack Incoming Webhooks |
 | Deployment | Docker Compose |
