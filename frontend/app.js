@@ -115,10 +115,10 @@ async function fetchStats() {
     if (!res.ok) return;
     const s = await res.json();
     const byId = {
-      "hstat-high":     s.high_open     ?? "—",
-      "hstat-med":      s.medium_open   ?? "—",
-      "hstat-resolved": s.resolved_24h  ?? "—",
-      "hstat-total":    s.total_24h     ?? "—",
+      "hstat-high":     s.high_open   ?? "—",
+      "hstat-med":      s.medium_open ?? "—",
+      "hstat-resolved": s.resolved    ?? "—",
+      "hstat-total":    s.total       ?? "—",
     };
     for (const [id, val] of Object.entries(byId)) {
       const el = document.getElementById(id);
@@ -231,11 +231,7 @@ function renderIncidents() {
 
 function renderIncidentDetail(inc) {
   if (!inc) {
-    detailBoxEl.innerHTML = `
-      <div class="detail-empty">
-        <div class="detail-empty-glyph">◈</div>
-        <div>Select an incident to view details</div>
-      </div>`;
+    detailBoxEl.innerHTML = `<div class="detail-empty">Select an incident to view details</div>`;
     return;
   }
 
@@ -290,7 +286,7 @@ function renderIncidentDetail(inc) {
   const rbBtn = document.createElement("button");
   rbBtn.className = "action-btn action-btn-ai";
   rbBtn.id = "runbook-btn";
-  rbBtn.textContent = "⚡ AI RUNBOOK";
+  rbBtn.textContent = "Generate Runbook";
   rbBtn.addEventListener("click", () => generateRunbook(inc.id, rbBtn));
   actions.appendChild(rbBtn);
 
@@ -345,7 +341,7 @@ async function updateStatus(id, status) {
 
 async function generateRunbook(incidentId, btn) {
   btn.disabled = true;
-  btn.textContent = "⚡ GENERATING…";
+  btn.textContent = "Generating...";
 
   try {
     const res = await fetch(`${API_BASE}/incidents/${encodeURIComponent(incidentId)}/runbook`, {
@@ -361,7 +357,7 @@ async function generateRunbook(incidentId, btn) {
       rbSection.style.display = "block";
     }
 
-    btn.textContent = "⚡ REGENERATE";
+    btn.textContent = "Regenerate";
     // Reload timeline to show runbook_generated event
     loadTimeline(incidentId);
   } catch (err) {

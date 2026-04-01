@@ -48,10 +48,10 @@ def test_list_incidents_respects_limit():
     assert len(data) <= 1
 
 
-def test_list_incidents_invalid_limit_returns_400():
-    """GET /incidents?limit=0 returns 400."""
+def test_list_incidents_invalid_limit_returns_422():
+    """GET /incidents?limit=0 returns 422 (FastAPI validation error)."""
     r = client.get("/incidents?limit=0")
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 # ── Single incident ────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ def test_stats_returns_expected_keys():
     r = client.get("/stats")
     assert r.status_code == 200
     data = r.json()
-    for key in ("total_24h", "open_count", "resolved_24h", "high_open", "medium_open"):
+    for key in ("total", "open_count", "resolved", "high_open", "medium_open"):
         assert key in data, f"Missing key: {key}"
 
 

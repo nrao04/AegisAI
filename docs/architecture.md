@@ -89,14 +89,15 @@ This pipeline decouples **log production** from **incident processing**, and mak
 
 ### 6. Chatbot – AI and automation layer
 
-- The chatbot layer (`chatbot/bots.py`) is the bridge between **natural language questions** and the incident API.
+- The chatbot layer (`backend/services/chatbot.py`) is the bridge between **natural language questions** and the incident API.
 - Given a question like “What’s broken right now?”, the bot:
   - Calls the incidents API to fetch recent incidents.
-  - Aggregates by severity and status.
-  - Returns a human-friendly summary for operators.
-- In future phases this can be extended to:
-  - Use an LLM to generate richer explanations.
+  - Uses Claude (via the Anthropic API) to generate a rich, context-aware answer.
+  - Falls back to rule-based aggregation by severity/status if no API key is configured.
+- Exposed via `POST /chat` on the FastAPI backend.
+- Future extensions:
   - Trigger or suggest runbook steps and automations.
+  - Persistent chat history per incident.
 
 ### 7. Frontend – Operator dashboard
 

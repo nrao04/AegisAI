@@ -85,7 +85,8 @@ If you prefer to run pieces yourself:
      ```bash
      docker compose -f deployment/docker-compose.kafka-only.yml up -d
      ```
-   - Or any other local Kafka (ensure it listens on `127.0.0.1:9092`).
+   - This starts a single-broker KRaft Kafka (no Zookeeper) on `localhost:9092`.
+   - Or use any other local Kafka that listens on `127.0.0.1:9092`.
 
 4. **Backend API + consumer**
    - In a terminal:
@@ -98,14 +99,18 @@ If you prefer to run pieces yourself:
      ```
    - The FastAPI app will start on `http://localhost:8000` and the Kafka consumer will run in a background task, creating incidents and persisting them into Postgres (and indexing into Elasticsearch).
 
-5. **Log producer**
-   - In another terminal (with Kafka running):
+5. **Seed demo data**
+   - With the backend running, populate the dashboard with realistic incidents:
+     ```bash
+     python backend/seed.py
+     ```
+   - This ingests 11 incidents across two tenants with mixed severities and statuses.
+   - To send a single raw log via Kafka instead (useful for testing the consumer pipeline):
      ```bash
      cd backend
      source .venv/bin/activate
      python -m services.log_ingestion
      ```
-   - This sends a sample log message to the `logs` topic, which should result in a new incident row in Postgres and a document in Elasticsearch.
 
 ---
 

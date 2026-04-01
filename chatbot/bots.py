@@ -1,13 +1,12 @@
 """
-Simple chatbot layer for AegisAI (Phase 7).
+Standalone CLI chatbot for AegisAI (rule-based, no dependencies).
 
-Given a high-level question like "what's broken?", this module:
-  - Calls the AegisAI incidents API
-  - Aggregates incidents by severity and status
-  - Returns a human-friendly summary
+DEPRECATED: The production chatbot is now `backend/services/chatbot.py`,
+which is Claude-powered and served via `POST /chat` on the FastAPI backend.
 
-This is intentionally rule-based and dependency-light; it can be
-extended later to call an LLM for richer analysis.
+This module is kept as a lightweight CLI debugging tool only. It requires
+the backend API to be running (`AEGIS_API_BASE`, default http://localhost:8000).
+Run with: python -m chatbot.bots
 """
 
 from __future__ import annotations

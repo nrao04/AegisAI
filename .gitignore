@@ -31,4 +31,4 @@ out/
 # Logs / local
 *.log
 .env.*
-!.env.example
+.env.example

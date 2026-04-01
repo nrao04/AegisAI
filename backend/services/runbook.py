@@ -41,8 +41,9 @@ def generate(incident: Incident) -> str:
                 }],
             )
             return response.content[0].text
-        except Exception:
-            pass  # fall through to rule-based
+        except Exception as e:
+            import logging
+            logging.error(f"Claude API error (runbook): {e}")
 
     return _rule_based(incident)
 

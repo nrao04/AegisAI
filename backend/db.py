@@ -221,21 +221,20 @@ def get_events(incident_id: str) -> list[dict]:
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 def get_stats() -> dict:
-    """Return live operational stats for the last 24 hours."""
+    """Return all-time operational stats."""
     with _get_conn() as conn:
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
                     SELECT
-                        COUNT(*)                                                             AS total_24h,
+                        COUNT(*)                                                             AS total,
                         COUNT(*) FILTER (WHERE status = 'open')                             AS open_count,
-                        COUNT(*) FILTER (WHERE status = 'resolved')                         AS resolved_24h,
+                        COUNT(*) FILTER (WHERE status = 'resolved')                         AS resolved,
                         COUNT(*) FILTER (WHERE severity IN ('high','critical')
                                           AND status = 'open')                              AS high_open,
                         COUNT(*) FILTER (WHERE severity = 'medium' AND status = 'open')     AS medium_open
                     FROM incidents
-                    WHERE created_at > NOW() - INTERVAL '24 hours'
                     """
                 )
                 row = cur.fetchone()

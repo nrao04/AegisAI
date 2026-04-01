@@ -67,18 +67,22 @@ def answer(question: str, limit: int = 50) -> str:
             client = anthropic.Anthropic(api_key=api_key)
             context = _build_context(incidents)
             response = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=512,
+                model="claude-sonnet-4-6",
+                max_tokens=300,
                 system=(
-                    "You are AegisAI, an AI incident response assistant. "
-                    "Be concise and actionable. Answer based on the current system state:\n\n"
+                    "You are AegisAI, an incident response assistant. "
+                    "Answer in plain text only — no markdown, no headers, no bullet symbols, no emojis, no tables. "
+                    "Be direct and concise: 3 to 6 lines maximum. "
+                    "Prioritize open high-severity incidents. "
+                    "Current system state:\n\n"
                     + context
                 ),
                 messages=[{"role": "user", "content": question}],
             )
             return response.content[0].text
-        except Exception:
-            pass  # fall through to rule-based
+        except Exception as e:
+            import logging
+            logging.error(f"Claude API error (chatbot): {e}")
 
     # Rule-based fallback
     q = question.strip().lower()
